@@ -1,19 +1,7 @@
-## Template installation script
-echo "Installing Last.fm and its dependencies..."
-INSTALLING="/home/volumio/lastfm.installing"
+#!/bin/bash
 
-if [ ! -f $INSTALLING ]; then
+# Announce plugin installation start...
+echo "Installing Last.fm Scrobbler and its dependencies..."
 
-  touch $INSTALLING
-
-  # Download LMS 7.9.0
-  echo "Downloading installation package..."
-  # Perform any kind of wget/apt-get install/dpkg -i/etc.
-
-  rm $INSTALLING
-
-  #required to end the plugin install
-  echo "plugininstallend"
-else
-  echo "Plugin is already installing! Not continuing..."
-fi
+# ... and plugin installation end.
+echo "plugininstallend"

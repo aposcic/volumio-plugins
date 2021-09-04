@@ -1,17 +1,7 @@
-## Template uninstallation script
-echo "Uninstalling LastFM and its dependencies..."
-INSTALLING="/home/volumio/lastfm.uninstalling"
+#!/bin/bash
 
-if [ ! -f $INSTALLING ]; then
+# Announce plugin uninstallation start...
+echo "Uninstalling Last.fm Scrobbler and its dependencies..."
 
-  touch $INSTALLING
-
-  # Uninstall Template
-
-  rm $INSTALLING
-
-  #required to end the plugin uninstall
-  echo "pluginuninstallend"
-else
-  echo "Plugin is already uninstalling! Not continuing..."
-fi
+# ... and plugin uninstallation end.
+echo "pluginuninstallend"

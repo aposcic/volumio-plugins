@@ -1,13 +1,13 @@
 {
   "name": "lastfm-lite",
   "version": "1.0.0",
-  "description": "Scrobble to Last.fm using the Volumio artist and track info.",
+  "description": "The plugin enables scrobbling to Last.fm using the Volumio artist and track info.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "aposcic",
-  "license": "GPL-3.0",
+  "license": "ISC",
   "volumio_info": {
     "prettyName": "Last.fm Scrobbler",
     "icon": "fa-lastfm",
@@ -71,23 +71,5 @@
     "ms": "^2.0.0",
     "object-component": "^0.0.3",
     "querystring": "^0.2.0"
-  },
-  "devDependencies": {},
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/aposcic/volumio-lastfm-plugin.git"
-  },
-  "keywords": [
-    "lastfm",
-    "last",
-    "fm",
-    "volumio"
-  ],
-  "bugs": {
-    "url": "https://github.com/aposcic/volumio-lastfm-plugin/issues"
-  },
-  "homepage": "https://github.com/aposcic/volumio-lastfm-plugin#readme",
-  "directories": {
-    "example": "examples"
   }
 }

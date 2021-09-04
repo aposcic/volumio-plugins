@@ -1,0 +1,7 @@
+# Plugin-related byproducts
+node_modules
+*.zip
+
+# IntelliJ IDEA project files
+.idea
+*.iml

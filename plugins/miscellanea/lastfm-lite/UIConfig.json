@@ -125,7 +125,7 @@
           "element": "switch",
           "label": "TRANSLATE.LASTFM.CLEAN_TITLES",
           "doc": "TRANSLATE.LASTFM.D_CLEAN_TITLES",
-          "value": true
+          "value": false
         },
         {
           "id": "pushToastOnScrobble",

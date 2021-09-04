@@ -220,7 +220,6 @@ ControllerLastFM.prototype.stop = function () {
 ControllerLastFM.prototype.onStart = function () {
     const self = this;
     self.logger.info("Performing onStart action");
-    self.addToBrowseSources();
 
     return libQ.resolve(undefined);
 };
@@ -372,7 +371,7 @@ ControllerLastFM.prototype.updateScrobbleSettings = function (data) {
     self.config.set('scrobble', data['scrobble']);
     self.config.set('supportedSongServices', data['supportedSongServices']);
     self.config.set('scrobbleThreshold', data['scrobbleThreshold'].value);
-    self.config.set('cleanTitles', data['cleanTitles'].value);
+    self.config.set('cleanTitles', data['cleanTitles']);
     self.config.set('pushToastOnScrobble', data['pushToastOnScrobble']);
     self.config.set('scrobbleFromStream', data['scrobbleFromStream']);
     self.config.set('supportedStreamingServices', data['supportedStreamingServices']);
@@ -406,7 +405,7 @@ function cleanTitle(title) {
         .replace(/([\/-] )?([(\[]?\d+[)\]]?)? ?remastere?d? ?(version)?([(\[]?\d+[)\]]?)?| [(\[].*remastere?d?.*[)\]]/i, '')
         .replace(/ ([\/-] .*)? ?album version.*| [(\[].*?album version.*?[)\]]/i, '')
         .replace(/ [(\[](\d+|bonus track) edition[)\]]/i, '')
-        .repla(/ ([\/-] )? ?explicit ?(.*?version)?| [(\[].*?explicit.*?[)\]]/i, '');
+        .replace(/ ([\/-] )? ?explicit ?(.*?version)?| [(\[].*?explicit.*?[)\]]/i, '');
 }
 
 ControllerLastFM.prototype.formatScrobbleData = function (state) {

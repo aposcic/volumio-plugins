@@ -1,6 +1,6 @@
 {
   "name": "lastfm-lite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The plugin enables scrobbling to Last.fm using the Volumio artist and track info.",
   "main": "index.js",
   "scripts": {

@@ -82,7 +82,6 @@
       "saveButton": {
         "label": "TRANSLATE.LASTFM.SAVE",
         "data": [
-          "scrobble",
           "supportedSongServices",
           "scrobbleThreshold",
           "cleanTitles",
@@ -93,13 +92,6 @@
         ]
       },
       "content": [
-        {
-          "id": "scrobble",
-          "element": "switch",
-          "label": "TRANSLATE.LASTFM.SCROBBLE",
-          "doc": "TRANSLATE.LASTFM.D_SCROBBLE",
-          "value": false
-        },
         {
           "id": "supportedSongServices",
           "element": "input",

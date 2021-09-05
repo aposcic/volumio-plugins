@@ -19,10 +19,6 @@
     "type": "string",
     "value": ""
   },
-  "scrobble": {
-    "type": "boolean",
-    "value": true
-  },
   "supportedSongServices": {
     "type": "string",
     "value": "mpd,airplay,volspotconnect,volspotconnect2,spop"

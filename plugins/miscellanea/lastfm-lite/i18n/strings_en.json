@@ -17,8 +17,6 @@
     "DD_STORE_PASSWORD": "Don't just store your password, read the info.",
     "SCROBBLESETTINGS": "Last.fm scrobble settings",
     "D_SCROBBLESETTINGS": "Fill in your authentication settings.",
-    "SCROBBLE": "Enable scrobbling",
-    "D_SCROBBLE": "Turn scrobbling globally on or off",
     "SUPPORTED_SONG_SERVICES": "Supported services providing track information",
     "D_SUPPORTED_SONG_SERVICES": "Services that provide both artist and track information for scrobbling.",
     "DD_SUPPORTED_SONG_SERVICES": "Comma separated list of valid services (no spaces); e.g. mpd,airplay,volspotconnect2,spop",

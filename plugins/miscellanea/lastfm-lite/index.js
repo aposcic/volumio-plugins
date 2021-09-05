@@ -44,7 +44,7 @@ function ControllerLastFM(context) {
     this.memoryTimer = undefined;
 }
 
-ControllerLastFM.prototype.resetState = function() {
+ControllerLastFM.prototype.resetState = function () {
     const self = this;
     self.previousState = null;
     self.updatingNowPlaying = false;
@@ -66,9 +66,10 @@ ControllerLastFM.prototype.resetState = function() {
 
 // noinspection JSUnusedGlobalSymbols
 ControllerLastFM.prototype.onVolumioStart = function () {
-    const self = this;
-    this.configFile = this.commandRouter.pluginManager.getConfigurationFile(this.context, 'config.json');
-    self.getConf(this.configFile);
+    const configFile = this.commandRouter.pluginManager.getConfigurationFile(this.context, 'config.json');
+
+    this.config = new (require('v-conf'))();
+    this.config.loadFile(configFile);
 
     return libQ.resolve(undefined);
 };
@@ -90,157 +91,158 @@ ControllerLastFM.prototype.onStart = function () {
 
     self.logger.info('[Last.fm] scrobbler initiated!');
     self.logger.info('[Last.fm] extended logging: ' + self.config.get('enable_debug_logging'));
-    self.logger.info('[Last.fm] scrobbling enabled: ' + self.config.get('scrobble'));
     self.logger.info('[Last.fm] clean titles: ' + self.config.get('cleanTitles'));
     self.logger.info('[Last.fm] try scrobble stream/radio plays: ' + self.config.get('scrobbleFromStream'));
     self.currentTimer = new PausableTimer(self.context, self.config.get('enable_debug_logging'));
 
     socket.on('pushState', function (state) {
-        // Create the timer object
-        if (!self.currentTimer) {
-            self.currentTimer = new PausableTimer(self.context, self.config.get('enable_debug_logging'));
-            if (self.config.get('enable_debug_logging'))
-                self.logger.info('[Last.fm] created new timer object');
-        } else {
-            if (self.config.get('enable_debug_logging'))
-                self.logger.info('[Last.fm] using existing timer');
-        }
+        // Get started with the scrobble dance if and only if we're dealing with a supported service
+        if (supportedSongServices.indexOf(state.service) !== -1 || supportedStreamingServices.indexOf(state.service) !== -1) {
+            // Create the timer object
+            if (!self.currentTimer) {
+                self.currentTimer = new PausableTimer(self.context, self.config.get('enable_debug_logging'));
+                if (self.config.get('enable_debug_logging'))
+                    self.logger.info('[Last.fm] created new timer object');
+            } else {
+                if (self.config.get('enable_debug_logging'))
+                    self.logger.info('[Last.fm] using existing timer');
+            }
 
-        let scrobbleThresholdInMilliseconds = 0;
-        if (supportedSongServices.indexOf(state.service) !== -1)
-            scrobbleThresholdInMilliseconds = state.duration * (self.config.get('scrobbleThreshold') / 100) * 1000;
-        if (self.config.get('scrobbleFromStream') && supportedStreamingServices.indexOf(state.service) !== -1)
-            scrobbleThresholdInMilliseconds = self.config.get('streamScrobbleThreshold') * 1000;
+            let scrobbleThresholdInMilliseconds = 0;
+            if (supportedSongServices.indexOf(state.service) !== -1)
+                scrobbleThresholdInMilliseconds = state.duration * (self.config.get('scrobbleThreshold') / 100) * 1000;
+            if (self.config.get('scrobbleFromStream') && supportedStreamingServices.indexOf(state.service) !== -1)
+                scrobbleThresholdInMilliseconds = self.config.get('streamScrobbleThreshold') * 1000;
 
-        // Set initial previousState object
-        let init = '';
-        if (self.previousState == null) {
-            self.previousState = state;
-            initialize = true;
-            init = ' | Initializing: true';
-        }
+            // Set initial previousState object
+            let init = '';
+            if (self.previousState == null) {
+                self.previousState = state;
+                initialize = true;
+                init = ' | Initializing: true';
+            }
 
-        if (self.config.get('enable_debug_logging')) {
-            self.logger.info(
-                '--------------------------------------------------------------------// [Last.fm] new state has been pushed; status: ' + state.status +
-                ' | service: ' + state.service + ' | duration: ' + state.duration +
-                ' | title: ' + state.title + ' | previous title: ' + self.previousState.title + init);
-            if (self.currentTimer)
-                self.logger.info('=================> [timer] is active: ' + self.currentTimer.isActive +
-                    ' | can continue: ' + self.currentTimer.canContinue + ' | timer started at: ' + self.currentTimer.timerStarted);
-        }
+            if (self.config.get('enable_debug_logging')) {
+                self.logger.info(
+                    '--------------------------------------------------------------------// [Last.fm] new state has been pushed; status: ' + state.status +
+                    ' | service: ' + state.service + ' | duration: ' + state.duration +
+                    ' | title: ' + state.title + ' | previous title: ' + self.previousState.title + init);
+                if (self.currentTimer)
+                    self.logger.info('=================> [timer] is active: ' + self.currentTimer.isActive +
+                        ' | can continue: ' + self.currentTimer.canContinue + ' | timer started at: ' + self.currentTimer.timerStarted);
+            }
 
-        self.formatScrobbleData(state);
+            self.formatScrobbleData(state);
 
-        // Scrobble from all services, or at least try to -> improves forward compatibility (but only if scrobbling is enabled)
-        if (state.status === 'play' && self.config.get('scrobble')) {
-            if (self.config.get('enable_debug_logging'))
-                self.logger.info('Playback detected, evaluating parameters for scrobbling...');
+            // Scrobble from all services, or at least try to -> improves forward compatibility (but only if scrobbling is enabled)
+            if (state.status === 'play') {
+                if (self.config.get('enable_debug_logging'))
+                    self.logger.info('[Last.fm] playback detected, evaluating parameters for scrobbling...');
 
-            // Try to update 'now playing' only if service is enabled
-            if (supportedSongServices.indexOf(state.service) !== -1 || supportedStreamingServices.indexOf(state.service) !== -1)
+                // Try to update 'now playing'
                 self.updateNowPlaying(state);
 
-            /*
+                /*
                 Either same song and previously stopped/paused
                 Or different song (artist or title differs)
             */
-            if
-            (
+                if
                 (
-                    self.previousState.artist === state.artist && self.previousState.title === state.title
-                    &&
                     (
-                        (self.previousState.status === 'pause' || self.previousState.status === 'stop') ||
-                        initialize ||
-                        (self.previousState.duration !== state.duration)
+                        self.previousState.artist === state.artist && self.previousState.title === state.title
+                        &&
+                        (
+                            (self.previousState.status === 'pause' || self.previousState.status === 'stop') ||
+                            initialize ||
+                            (self.previousState.duration !== state.duration)
+                        )
                     )
-                )
-                ||
-                (
-                    self.currentTimer && !self.currentTimer.isActive &&
-                    (self.previousScrobble.artist !== state.artist || self.previousScrobble.title !== state.title)
-                )
-            ) {
-                if (self.config.get('enable_debug_logging'))
-                    self.logger.info('[Last.fm] Continuing playback or different song.');
-
-                // Song service, since duration is > 0
-                if (state.duration > 0) {
+                    ||
+                    (
+                        self.currentTimer && !self.currentTimer.isActive &&
+                        (self.previousScrobble.artist !== state.artist || self.previousScrobble.title !== state.title)
+                    )
+                ) {
                     if (self.config.get('enable_debug_logging'))
-                        self.logger.info('[Last.fm] timeToPlay for current track: ' + self.timeToPlay);
+                        self.logger.info('[Last.fm] continuing playback or different song.');
 
-                    // Continuing playback, timeToPlay was populated
-                    if (self.timeToPlay > 0) {
+                    // Song service, since duration is > 0
+                    if (state.duration > 0) {
                         if (self.config.get('enable_debug_logging'))
-                            self.logger.info('[Last.fm] Continuing scrobble, starting new timer for the remainder of ' +
-                                self.timeToPlay + ' milliseconds [' + state.artist + ' - ' + state.title + '].');
+                            self.logger.info('[Last.fm] timeToPlay for current track: ' + self.timeToPlay);
 
-                        self.stopAndStartTimer(self.timeToPlay, state, scrobbleThresholdInMilliseconds);
-                    } else {
-                        // Create a new timer
-                        if (scrobbleThresholdInMilliseconds > 0) {
+                        // Continuing playback, timeToPlay was populated
+                        if (self.timeToPlay > 0) {
                             if (self.config.get('enable_debug_logging'))
-                                self.logger.info('[Last.fm] starting new timer for ' +
-                                    scrobbleThresholdInMilliseconds + ' milliseconds [' + state.artist + ' - ' + state.title + '].');
+                                self.logger.info('[Last.fm] continuing scrobble, starting new timer for the remainder of ' +
+                                    self.timeToPlay + ' milliseconds [' + state.artist + ' - ' + state.title + '].');
 
-                            self.stopAndStartTimer(scrobbleThresholdInMilliseconds, state, scrobbleThresholdInMilliseconds);
+                            self.stopAndStartTimer(self.timeToPlay, state, scrobbleThresholdInMilliseconds);
                         } else {
-                            if (self.config.get('enable_debug_logging'))
-                                self.logger.info('[Last.fm] can not scrobble; state object: ' + JSON.stringify(state));
+                            // Create a new timer
+                            if (scrobbleThresholdInMilliseconds > 0) {
+                                if (self.config.get('enable_debug_logging'))
+                                    self.logger.info('[Last.fm] starting new timer for ' +
+                                        scrobbleThresholdInMilliseconds + ' milliseconds [' + state.artist + ' - ' + state.title + '].');
+
+                                self.stopAndStartTimer(scrobbleThresholdInMilliseconds, state, scrobbleThresholdInMilliseconds);
+                            } else {
+                                if (self.config.get('enable_debug_logging'))
+                                    self.logger.info('[Last.fm] can not scrobble; state object: ' + JSON.stringify(state));
+                            }
                         }
+                    } else if (state.duration === 0 && state.service === 'webradio') {
+                        if (self.config.get('enable_debug_logging'))
+                            self.logger.info('[Last.fm] starting new timer for ' +
+                                scrobbleThresholdInMilliseconds + ' milliseconds [webradio: ' + state.title + '].');
+
+                        self.stopAndStartTimer(scrobbleThresholdInMilliseconds, state, scrobbleThresholdInMilliseconds);
                     }
-                } else if (state.duration === 0 && state.service === 'webradio') {
+
+                    if (initialize)
+                        initialize = false;
+                } else if (
+                    self.previousState.artist === state.artist && self.previousState.title === state.title &&
+                    self.previousState.duration !== state.duration && !self.currentTimer.isActive
+                ) {
+                    // Airplay fix, the duration is propagated at a later point in time
+                    const addition = (state.duration - self.previousState.duration) * (self.config.get('scrobbleThreshold') / 100) * 1000;
+                    self.logger.info('[Last.fm] updating timer, previous duration is obsolete; adding ' + addition + ' milliseconds.');
+                    self.currentTimer.addMilliseconds(addition, function () {
+                        self.scrobble(state, self.config.get('scrobbleThreshold'), scrobbleThresholdInMilliseconds);
+                        self.currentTimer.stop();
+                        self.timeToPlay = 0;
+                    });
+                } else if (
+                    self.previousState.artist === state.artist && self.previousState.title === state.title &&
+                    self.previousState.duration === state.duration
+                ) {
+                    // Just a state update, no action necessary
                     if (self.config.get('enable_debug_logging'))
-                        self.logger.info('[Last.fm] starting new timer for ' +
-                            scrobbleThresholdInMilliseconds + ' milliseconds [webradio: ' + state.title + '].');
-
-                    self.stopAndStartTimer(scrobbleThresholdInMilliseconds, state, scrobbleThresholdInMilliseconds);
+                        self.logger.info('[Last.fm] same state, different update... no action required.');
+                } else {
+                    if (self.config.get('enable_debug_logging'))
+                        self.logger.info('[Last.fm] could not process current state: ' + JSON.stringify(state));
                 }
+                // else = multiple pushStates without change, ignoring them
+            } else if (state.status === 'pause') {
+                if (self.currentTimer.isActive) {
+                    self.timeToPlay = self.currentTimer.pause();
+                    self.previousState = state;
+                }
+            } else if (state.status === 'stop') {
+                if (self.config.get('enable_debug_logging'))
+                    self.logger.info('[Last.fm] stopping timer, song has ended.');
 
-                if (initialize)
-                    initialize = false;
-            } else if (
-                self.previousState.artist === state.artist && self.previousState.title === state.title &&
-                self.previousState.duration !== state.duration && !self.currentTimer.isActive
-            ) {
-                // Airplay fix, the duration is propagated at a later point in time
-                const addition = (state.duration - self.previousState.duration) * (self.config.get('scrobbleThreshold') / 100) * 1000;
-                self.logger.info('[Last.fm] updating timer, previous duration is obsolete; adding ' + addition + ' milliseconds.');
-                self.currentTimer.addMilliseconds(addition, function () {
-                    self.scrobble(state, self.config.get('scrobbleThreshold'), scrobbleThresholdInMilliseconds);
+                if (self.currentTimer.isActive) {
                     self.currentTimer.stop();
-                    self.timeToPlay = 0;
-                });
-            } else if (
-                self.previousState.artist === state.artist && self.previousState.title === state.title &&
-                self.previousState.duration === state.duration
-            ) {
-                // Just a state update, no action necessary
-                if (self.config.get('enable_debug_logging'))
-                    self.logger.info('[Last.fm] same state, different update... no action required.');
-            } else {
-                if (self.config.get('enable_debug_logging'))
-                    self.logger.info('[Last.fm] could not process current state: ' + JSON.stringify(state));
+                    self.previousState = state;
+                }
+                self.timeToPlay = 0;
             }
-            // else = multiple pushStates without change, ignoring them
-        } else if (state.status === 'pause') {
-            if (self.currentTimer.isActive) {
-                self.timeToPlay = self.currentTimer.pause();
-                self.previousState = state;
-            }
-        } else if (state.status === 'stop') {
-            if (self.config.get('enable_debug_logging'))
-                self.logger.info('[Last.fm] stopping timer, song has ended.');
 
-            if (self.currentTimer.isActive) {
-                self.currentTimer.stop();
-                self.previousState = state;
-            }
-            self.timeToPlay = 0;
+            self.previousState = state;
         }
-
-        self.previousState = state;
     });
 
     return libQ.resolve(undefined);
@@ -270,11 +272,10 @@ ControllerLastFM.prototype.onStop = function () {
 
 // Plugin configuration ------------------------------------------------------------------------------------------------
 
-ControllerLastFM.prototype.getConf = function (configFile) {
-    this.config = new (require('v-conf'))()
-    this.config.loadFile(configFile)
-
-    return libQ.resolve(undefined);
+// noinspection JSUnusedGlobalSymbols
+ControllerLastFM.prototype.getConfigurationFiles = function()
+{
+    return ['config.json'];
 };
 
 // noinspection JSUnusedGlobalSymbols
@@ -283,10 +284,6 @@ ControllerLastFM.prototype.getUIConfig = function () {
     const defer = libQ.defer();
 
     const lang_code = this.commandRouter.sharedVars.get('language_code');
-    self.getConf(this.configFile);
-
-    self.logger.info("[Last.fm] loaded the previous config.");
-
     const thresholds = fs.readJsonSync((__dirname + '/options/thresholds.json'), 'utf8', {throws: false});
 
     self.commandRouter.i18nJson(__dirname + '/i18n/strings_' + lang_code + '.json',
@@ -306,8 +303,7 @@ ControllerLastFM.prototype.getUIConfig = function () {
             self.logger.info("[Last.fm] 1/3 settings loaded");
 
             // Scrobble settings
-            uiconf.sections[1].content[0].value = self.config.get('scrobble');
-            uiconf.sections[1].content[1].value = self.config.get('supportedSongServices');
+            uiconf.sections[1].content[0].value = self.config.get('supportedSongServices');
             for (let n = 0; n < thresholds.percentages.length; n++) {
                 self.configManager.pushUIConfigParam(uiconf, 'sections[1].content[1].options', {
                     value: thresholds.percentages[n].perc,
@@ -315,15 +311,15 @@ ControllerLastFM.prototype.getUIConfig = function () {
                 });
 
                 if (thresholds.percentages[n].perc === parseInt(self.config.get('scrobbleThreshold'))) {
-                    uiconf.sections[1].content[2].value.value = thresholds.percentages[n].perc;
-                    uiconf.sections[1].content[2].value.label = thresholds.percentages[n].desc;
+                    uiconf.sections[1].content[1].value.value = thresholds.percentages[n].perc;
+                    uiconf.sections[1].content[1].value.label = thresholds.percentages[n].desc;
                 }
             }
-            uiconf.sections[1].content[3].value = self.config.get('cleanTitles');
-            uiconf.sections[1].content[4].value = self.config.get('pushToastOnScrobble');
-            uiconf.sections[1].content[5].value = self.config.get('scrobbleFromStream');
-            uiconf.sections[1].content[6].value = self.config.get('supportedStreamingServices');
-            uiconf.sections[1].content[7].value = self.config.get('streamScrobbleThreshold');
+            uiconf.sections[1].content[2].value = self.config.get('cleanTitles');
+            uiconf.sections[1].content[3].value = self.config.get('pushToastOnScrobble');
+            uiconf.sections[1].content[4].value = self.config.get('scrobbleFromStream');
+            uiconf.sections[1].content[5].value = self.config.get('supportedStreamingServices');
+            uiconf.sections[1].content[6].value = self.config.get('streamScrobbleThreshold');
             self.logger.info("[Last.fm] 2/3 settings loaded");
 
             uiconf.sections[2].content[0].value = self.config.get('enable_debug_logging');
@@ -363,7 +359,6 @@ ControllerLastFM.prototype.updateScrobbleSettings = function (data) {
     const self = this;
     const defer = libQ.defer();
 
-    self.config.set('scrobble', data['scrobble']);
     self.config.set('supportedSongServices', data['supportedSongServices']);
     self.config.set('scrobbleThreshold', data['scrobbleThreshold'].value);
     self.config.set('cleanTitles', data['cleanTitles']);
@@ -372,6 +367,10 @@ ControllerLastFM.prototype.updateScrobbleSettings = function (data) {
     self.config.set('supportedStreamingServices', data['supportedStreamingServices']);
     self.config.set('streamScrobbleThreshold', data['streamScrobbleThreshold']);
     defer.resolve();
+
+    // Update global values
+    supportedSongServices = data['supportedSongServices'].split(',');
+    supportedStreamingServices = data['supportedStreamingServices'].split(',');
 
     self.commandRouter.pushToastMessage('success', "Saved settings", "Successfully saved scrobble settings.");
 
@@ -408,7 +407,7 @@ ControllerLastFM.prototype.stopAndStartTimer = function (timerLength, state, scr
         });
         defer.resolve();
     } catch (ex) {
-        self.logger.error('[Last.fm] An error occurred during timer reset; ' + ex);
+        self.logger.error('[Last.fm] an error occurred during timer reset; ' + ex);
         self.logger.info('[Last.fm] STATE; ' + JSON.stringify(state));
         defer.reject(undefined);
     }

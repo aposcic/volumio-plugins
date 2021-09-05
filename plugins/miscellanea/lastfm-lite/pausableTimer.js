@@ -17,8 +17,8 @@ function Timer(context, enable_debug_logging) {
 
 
 Timer.prototype.start = function (timeOut, callback) {
-	const self = this;
-	self.timeRemaining = timeOut;
+    const self = this;
+    self.timeRemaining = timeOut;
     self.cb = callback;
 
     if (!self.timer) {
@@ -31,9 +31,10 @@ Timer.prototype.start = function (timeOut, callback) {
     // There is no else, the timer object should always be nullified when pausing/stopping
 };
 
+// noinspection JSUnusedGlobalSymbols
 Timer.prototype.resume = function () {
-	const self = this;
-	if (!self.timer) {
+    const self = this;
+    if (!self.timer) {
         self.timerStarted = new Date().getTime();
         self.timer = setTimeout(self.cb, self.timeRemaining);
         self.isActive = true;
@@ -44,11 +45,11 @@ Timer.prototype.resume = function () {
 };
 
 Timer.prototype.pause = function () {
-	const self = this;
-	if (self.timer) {
+    const self = this;
+    if (self.timer) {
         clearTimeout(self.timer);
-		const now = new Date().getTime();
-		self.timeRemaining -= now - self.timerStarted;
+        const now = new Date().getTime();
+        self.timeRemaining -= now - self.timerStarted;
         self.isActive = false;
         self.canContinue = true;
         if (self.debug_mode && self.timeRemaining > 0)
@@ -59,8 +60,8 @@ Timer.prototype.pause = function () {
 };
 
 Timer.prototype.stop = function () {
-	const self = this;
-	if (self.timer) {
+    const self = this;
+    if (self.timer) {
         clearTimeout(self.timer);
         self.isActive = false;
         self.canContinue = false;
@@ -71,11 +72,11 @@ Timer.prototype.stop = function () {
 };
 
 Timer.prototype.addMilliseconds = function (milliseconds, newCallback) {
-	const self = this;
-	if (self.timer) {
+    const self = this;
+    if (self.timer) {
         clearTimeout(self.timer);
-		const now = new Date().getTime();
-		//self.timeRemaining -= now - self.timerStarted;
+        //const now = new Date().getTime();
+        //self.timeRemaining -= now - self.timerStarted;
         console.log('Currently remaining: ' + self.timeRemaining);
         self.timeRemaining += milliseconds;
 
